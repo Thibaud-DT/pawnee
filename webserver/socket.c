@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <unistd.h>
 
 int socket_serveur;
 int socket_client;
@@ -13,6 +14,8 @@ int optval = 1;
 
 int creer_serveur(int port) {
 	struct sockaddr_in saddr;
+	pid_t pid;
+	
 	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
 	initialiser_signaux();
 	if(socket_serveur == -1) {
@@ -42,8 +45,20 @@ int creer_serveur(int port) {
 	if(socket_client == -1) {
 		perror("ACCEPT SOCKET SERVEUR");
 	}
-	sleep(1);
-	write(socket_client, message_bienvenue, strlen(message_bienvenue));
+	pid = fork();
+	if(pid ==0){
+	  write(socket_client, message_bienvenue, strlen(message_bienvenue));
+
+	  /* traitement du client */
+
+	}else{
+	  	  
+	}
+
+	
+
+
+
 	return 0;
 }
 
