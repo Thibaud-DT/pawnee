@@ -17,14 +17,17 @@ int creer_serveur(int port) {
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(8080);
 	saddr.sin_addr.s_addr = INADDR_ANY;
-	if(bind(socket_serveur, saddr, sizeof(saddr)) == -1) {
+
+	if(bind(socket_serveur, (struct sockaddr*)&saddr, sizeof(saddr)) == -1) {
 		perror("BIND SOCKET SERVEUR");
 		return -1;
 	}
+
 	if(listen(socket_serveur, 10) == -1) {
 		perror("LISTEN SOCKET SERVEUR");
 		return -1;
 	}
+
 	socket_client = accept(socket_serveur, NULL, NULL);
 	if(socket_client == -1) {
 		perror("ACCEPT SOCKET SERVEUR");
