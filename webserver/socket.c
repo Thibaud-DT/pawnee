@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 int socket_serveur;
 int socket_client;
