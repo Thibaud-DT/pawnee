@@ -3,7 +3,7 @@ LD=gcc
 CFLAGS=-Wall -W -Werror
 LDFLAGS=
 
-EXE=pawnee
+EXE=webever
 
 HEADERS=$(wildcard *h)
 CFILES=$(wildcard *c)
