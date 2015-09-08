@@ -1,0 +1,5 @@
+Chapitre 3.2
+1/ Le serveur ne peut pas être relancé. La socket n'a pas été détruite, donc il est impossible d'en recréer une sur la même adresse.
+2/ NC n'attend pas de réponses avec l'option -z. Il effectue juste une connexion. Le serveur accepte la connexion, mais ne peux pas envoyer le message, la socket cliente étant déjà détruite par NC.
+3/ Il ne se passe rien. Le serveur n'écouté pas sur le 8080 pour les IPv6.
+4/ Un seul client arrive à se connecte puisque le serveur se coupe après la connexion d'un client.
