@@ -77,8 +77,8 @@ int initialiser_signaux() {
 	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
 		perror("FERMETURE CONNEXION");
 	}
-	/*if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
 		perror("ERROR");
-	}*/
+	}
 	return 0;
 }
