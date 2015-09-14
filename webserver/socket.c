@@ -55,9 +55,6 @@ int creer_serveur(int port) {
 	  	  
 	}
 
-	
-
-
 
 	return 0;
 }
