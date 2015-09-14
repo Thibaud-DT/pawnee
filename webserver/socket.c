@@ -15,7 +15,6 @@ int optval = 1;
 int creer_serveur(int port) {
 	struct sockaddr_in saddr;
 	pid_t pid;
-	
 	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
 	initialiser_signaux();
 	if(socket_serveur == -1) {
@@ -23,7 +22,7 @@ int creer_serveur(int port) {
 		return -1;
 	}
 	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(8080);
+	saddr.sin_port = htons(port);
 	saddr.sin_addr.s_addr = INADDR_ANY;
 
 	if(setsockopt(socket_serveur, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int)) == -1) {
@@ -41,21 +40,22 @@ int creer_serveur(int port) {
 		return -1;
 	}
 
-	socket_client = accept(socket_serveur, NULL, NULL);
-	if(socket_client == -1) {
-		perror("ACCEPT SOCKET SERVEUR");
+	while(1) {
+		socket_client = accept(socket_serveur, NULL, NULL);
+		if(socket_client == -1) {
+			perror("ACCEPT SOCKET SERVEUR");
+		}
+		pid = fork();
+		if(pid == 0){
+	  		write(socket_client, message_bienvenue, strlen(message_bienvenue));
+			return 0;
+		}else if(pid == -1){
+			perror("ERROR FORKING");
+			return -1;
+		} else {
+	  		close(socket_client);
+		}
 	}
-	pid = fork();
-	if(pid ==0){
-	  write(socket_client, message_bienvenue, strlen(message_bienvenue));
-
-	  /* traitement du client */
-
-	}else{
-	  	  
-	}
-
-
 	return 0;
 }
 
