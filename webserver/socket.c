@@ -7,6 +7,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define BUFFER_SIZE 4096
+
 int socket_serveur;
 int socket_client;
 const char *message_bienvenue = "Bonjour, bienvenue sur mon serveur \n";
@@ -41,17 +43,21 @@ int creer_serveur(int port) {
 	}
 
 	while((socket_client = accept(socket_serveur, NULL, NULL))) {
-
+		printf("NOUVELLE CONNEXION\n");
 		if(socket_client == -1)
 			perror("ACCEPT SOCKET SERVEUR");
-
 		pid = fork();
 		if(pid == 0){
-			char req[4096];
-			read(socket_client, &req, 4096);
-			printf("%s", req);
-	  		write(socket_client, message_bienvenue, strlen(message_bienvenue));
-			close(socket_client);
+			FILE *fp;
+			char req[BUFFER_SIZE];
+			int nbbytes = 0;
+			fp = fdopen(socket_client, "w+");
+			while(req[0] != '\n') {
+				fgets(req, sizeof(req), fp);
+				fprintf(fp, "<webever> %s", req);
+				printf("%s", req);
+			}
+			fclose(fp);
 			return 0;
 		}else if(pid == -1){
 			perror("ERROR FORKING");
