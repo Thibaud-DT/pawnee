@@ -40,12 +40,11 @@ int creer_serveur(int port) {
 		return -1;
 	}
 
-	while(1) {
-		socket_client = accept(socket_serveur, NULL, NULL);
-		printf("NOUVELLE CONNEXION %d\n", getpid());
-		if(socket_client == -1) {
+	while((socket_client = accept(socket_serveur, NULL, NULL))) {
+
+		if(socket_client == -1)
 			perror("ACCEPT SOCKET SERVEUR");
-		}
+
 		pid = fork();
 		if(pid == 0){
 			char req[4096];
@@ -77,8 +76,8 @@ int initialiser_signaux() {
 	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
 		perror("FERMETURE CONNEXION");
 	}
-	/*if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
 		perror("ERROR");
-	}*/
+	}
 	return 0;
 }
