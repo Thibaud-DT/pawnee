@@ -64,7 +64,6 @@ int creer_serveur(int port) {
 }
 
 void traitement_signal(int sig) {
-	wait();
 	printf("FERMETURE CONNEXION\n");
 }
 
@@ -74,10 +73,10 @@ int initialiser_signaux() {
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	if(sigaction(SIGCHLD, &sa, NULL) == -1) {
-		perror("FERMETURE CONNEXION");
+		perror("ERROR SIGCHLD HANDLER");
 	}
 	if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-		perror("ERROR");
+		perror("ERROR SIGPIPE");
 	}
 	return 0;
 }
