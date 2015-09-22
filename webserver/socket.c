@@ -52,8 +52,7 @@ int creer_serveur(int port) {
 			char req[BUFFER_SIZE];
 			int nbbytes = 0;
 			fp = fdopen(socket_client, "w+");
-			while(req[0] != '\n') {
-				fgets(req, sizeof(req), fp);
+			while(fgets(req, sizeof(req), fp) != NULL && req[0] != '\n') {
 				fprintf(fp, "<webever> %s", req);
 				printf("%s", req);
 			}
