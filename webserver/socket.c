@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define BUFFER_SIZE 4096
@@ -70,6 +71,7 @@ int creer_serveur(int port) {
 
 void traitement_signal(int sig) {
 	printf("FERMETURE CONNEXION\n");
+	waitpid(-1, &sig, WNOHANG);
 }
 
 int initialiser_signaux() {
