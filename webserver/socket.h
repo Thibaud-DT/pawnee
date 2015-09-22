@@ -3,5 +3,7 @@
 
 int creer_serveur(int port);
 int initialiser_signaux();
+void response_200(FILE *fp);
+void response_400(FILE *fp);
 
 #endif
