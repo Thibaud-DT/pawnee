@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include "socket.h"
 
@@ -98,6 +99,7 @@ void response_200(FILE *fp){
 
 void traitement_signal(int sig) {
 	printf("FERMETURE CONNEXION\n");
+	waitpid(-1, &sig, WNOHANG);
 }
 
 int initialiser_signaux() {
