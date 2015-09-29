@@ -7,17 +7,19 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "socket.h"
 
 #define BUFFER_SIZE 4096
 
 
-#define E_400 "HTTP/1.1 400 Bad Request\nConnection: clone\nContent-Length: 17\n\n400 Bad request\n"
+#define E_400 "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 17\r\n\r\n400 Bad request\r\n"
+#define E_404 "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 13\r\n\r\n404 Not Found\r\n"
 #define OK "HTTP/1.1 200 OK"
 
 int socket_serveur;
 int socket_client;
-const char *message_bienvenue = "Bonjour, bienvenue sur mon serveur \n";
+const char *message_bienvenue = "<h1>Bonjour, bienvenue sur mon serveur</h1>";
 int optval = 1;
 
 int creer_serveur(int port) {
@@ -63,9 +65,13 @@ int creer_serveur(int port) {
 				uri = strtok (NULL, " ");
 				version = strtok (NULL, " ");
 				if(strcmp(method,"GET") == 0 && (strncmp(version,"HTTP/1.0",8) == 0 || strncmp(version,"HTTP/1.1",8) == 0)){
-					printf("METHOD : %s / URI : %s / VERSION :%s", method,uri,version);
+					printf("METHOD :[%s]/ URI :[%s]/ VERSION :[%s]", method,uri,version);
 					while(fgets(req, sizeof(req), fp) != NULL && req[0] != '\n' && req[0] != '\r');
-					response_200(fp);			
+
+					if(strcmp(uri, "/") == 0 || strcmp(uri, "") == 0)
+						response_200(fp);			
+					else
+						response_404(fp);	
 				}
 				else
 					response_400(fp);
@@ -86,13 +92,25 @@ void response_400(FILE *fp){
 	fprintf(fp,E_400);
 }
 
-void response_200(FILE *fp){
-	char* response = "HTTP/1.1 200 OK\nContent-Length: ";
+void response_404(FILE *fp) {
+	fprintf(fp,E_404);
+}
 
-	itoa(response, sizeof(message_bienvenue),10);
-	strcat(response, "\n");
+void response_200(FILE *fp){
+	char response[1024];
+	char itoa[10];
+
+	strcpy(response, "HTTP/1.1 200 OK\r\nContent-Length: ");
+	sprintf(itoa, "%d", strlen(message_bienvenue));
+	strcat(response, itoa);
+	strcat(response, "\r\n");
+	strcat(response, "Content-Type: text/html\r\n");
+	strcat(response, "\r\n");
 	strcat(response, message_bienvenue);
-	strcat(response, "\n");
+	
+	strcat(response, "\r\n");
+
+	printf("%s",response);
 
 	fprintf(fp, response);
 }
