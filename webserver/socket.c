@@ -56,17 +56,20 @@ int creer_serveur(int port) {
 		pid = fork();
 		if(pid == 0){
 			FILE *fp;
+			char *res;
 			char req[BUFFER_SIZE];
 			int nbbytes = 0;
 			char *method, *uri, *version;
 			fp = fdopen(socket_client, "w+");
 			if(fgets(req, sizeof(req), fp) != NULL){
-				method = strtok (req," ");
+				res = strdup(req);
+				method = strtok (res," ");
 				uri = strtok (NULL, " ");
 				version = strtok (NULL, " ");
+				
 				if(strcmp(method,"GET") == 0 && (strncmp(version,"HTTP/1.0",8) == 0 || strncmp(version,"HTTP/1.1",8) == 0)){
-					printf("METHOD :[%s]/ URI :[%s]/ VERSION :[%s]", method,uri,version);
-					while(fgets(req, sizeof(req), fp) != NULL && req[0] != '\n' && req[0] != '\r');
+					printf("METHOD :[%s]/ URI :[%s]/ VERSION :[%s", method,uri,version);
+					while(fgets(req, sizeof(req), fp) != NULL && req[0] != '\r' && req[0] != '\n');
 
 					if(strcmp(uri, "/") == 0 || strcmp(uri, "") == 0)
 						response_200(fp);			
@@ -94,6 +97,7 @@ void response_400(FILE *fp){
 
 void response_404(FILE *fp) {
 	fprintf(fp,E_404);
+	printf("404: Not Found\n");
 }
 
 void response_200(FILE *fp){
