@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include "socket.h"
@@ -13,16 +16,16 @@
 #define BUFFER_SIZE 4096
 
 
-#define E_400 "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 17\r\n\r\n400 Bad request\r\n"
+#define E_400 "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 17\r\n\r\n400 Bad Request\r\n"
 #define E_404 "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 13\r\n\r\n404 Not Found\r\n"
 #define OK "HTTP/1.1 200 OK"
 
 int socket_serveur;
 int socket_client;
-const char *message_bienvenue = "<h1>Bonjour, bienvenue sur mon serveur</h1>";
+const char *message_bienvenue = "<html><head><title>Hello</title><body><h1>Bonjour, bienvenue sur mon serveur</h1></body></html>";
 int optval = 1;
 
-int creer_serveur(int port) {
+int creer_serveur(int port, char *document_root) {
 	struct sockaddr_in saddr;
 	pid_t pid;
 	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
@@ -49,38 +52,47 @@ int creer_serveur(int port) {
 		perror("LISTEN SOCKET SERVEUR");
 		return -1;
 	}
+	
+	printf("SERVER CREATED ON PORT %d\n[%s]\n", port, document_root);
 
 	while((socket_client = accept(socket_serveur, NULL, NULL))) {
 		if(socket_client == -1)
 			perror("ACCEPT SOCKET SERVEUR");
+		printf("-----------------------------------------------\n");
 		pid = fork();
 		if(pid == 0){
 			FILE *fp;
-			char *res;
 			char req[BUFFER_SIZE];
-			int nbbytes = 0;
-			char *method, *uri, *version;
+			int parse;
+			int fd;
+			http_request *request = (http_request *)malloc(sizeof(http_request));
 			fp = fdopen(socket_client, "w+");
-			if(fgets(req, sizeof(req), fp) != NULL){
-				res = strdup(req);
-				method = strtok (res," ");
-				uri = strtok (NULL, " ");
-				version = strtok (NULL, " ");
-				
-				if(strcmp(method,"GET") == 0 && (strncmp(version,"HTTP/1.0",8) == 0 || strncmp(version,"HTTP/1.1",8) == 0)){
-					printf("METHOD :[%s]/ URI :[%s]/ VERSION :[%s", method,uri,version);
-					while(fgets(req, sizeof(req), fp) != NULL && req[0] != '\r' && req[0] != '\n');
-
-					if(strcmp(uri, "/") == 0 || strcmp(uri, "") == 0)
-						response_200(fp);			
-					else
-						response_404(fp);	
-				}
-				else
-					response_400(fp);
+			fgets_or_exit(req, sizeof(req), fp);
+			printf("Parsing request...\n");
+			parse = parse_http_request(req, request);
+			printf("METHOD :[%d], URI :[%s], VERSION :[%d.%d]\n", request->method, request->url, request->major_version, request->minor_version);
+			skip_headers(fp);
+			if(!parse)
+				send_response(fp, 400, "Bad Request", "<h1>400: Bad Request</h1>");
+			else if(request->method == HTTP_UNSUPPORTED)
+				send_response(fp, 405, "Method Not Allowed", "<h1>405: Method Not Allowed</h1>");
+			else if(request->major_version != 1 && (request->minor_version < 0 || request->minor_version > 1))
+				send_response(fp, 505, "HTTP Version Not Supported", "<h1>505: HTTP Version Not Supported</h1>");
+			else if((fd = check_and_open(request->url, document_root)) != -1) {
+				char headers[1024];
+				int fsize = get_file_size(fd);
+				char buffer[fsize];
+				send_status(fp, 200, "OK");
+				sprintf(headers, "Content-Length: %d\r\nContent-Type: text/html\r\n\r\n", fsize);
+				fprintf(fp, headers);
+				read(fd, buffer, fsize);
+				close(fd);
+				fprintf(fp, buffer);
+				fprintf(fp, "\r\n"); 		
 			}
-			fclose(fp);
-			return 0;
+			else
+				send_response(fp, 404, "Not Found", "<h1>404: Not Found</h1>");
+			return fclose(fp);
 		}else if(pid == -1){
 			perror("ERROR FORKING");
 			return -1;
@@ -91,36 +103,112 @@ int creer_serveur(int port) {
 	return 0;
 }
 
-void response_400(FILE *fp){
-	fprintf(fp,E_400);
+char *fgets_or_exit(char *buffer, int size, FILE *stream) {
+	if(fgets(buffer, size, stream) == NULL) {
+		printf("Connection was closed !\n");
+		exit(1);
+	}
 }
 
-void response_404(FILE *fp) {
-	fprintf(fp,E_404);
-	printf("404: Not Found\n");
+void skip_headers(FILE *stream) {
+	char req[BUFFER_SIZE];
+	while(req[0] != '\r' && req[1] != '\n') fgets_or_exit(req, sizeof(req), stream);
 }
 
-void response_200(FILE *fp){
-	char response[1024];
-	char itoa[10];
+void send_status(FILE *client, int code, const char *reason_phrase) {
+	char response[256];
+	sprintf(response, "HTTP/1.1 %d %s\r\n", code, reason_phrase);
+	fprintf(client, response);
+	printf("%d: %s\n", code, reason_phrase);
+}
 
-	strcpy(response, "HTTP/1.1 200 OK\r\nContent-Length: ");
-	sprintf(itoa, "%d", strlen(message_bienvenue));
-	strcat(response, itoa);
-	strcat(response, "\r\n");
-	strcat(response, "Content-Type: text/html\r\n");
-	strcat(response, "\r\n");
-	strcat(response, message_bienvenue);
+void send_response(FILE *client, int code, const char *reason_phrase, const char *message_body) {
+	send_status(client, code, reason_phrase);
+	if(message_body != NULL) {
+		char content_length[256];
+		char content_type[256];
+		sprintf(content_length, "Content-Length: %d\r\n", strlen(message_body));
+		sprintf(content_type, "Content-Type: text/html\r\n");
+		fprintf(client, content_type);
+		fprintf(client, content_length);
+		fprintf(client, "\r\n");
+		fprintf(client, message_body);
+	}
+	fprintf(client, "\r\n");
+}
+
+int parse_http_request(const char *request_line, http_request *request) {
+	char *req;
+	char *method;
+	char *convert_int_error;
+	char *uri;
+	char *prot;
+	const char *smajor_version;
+	const char *sminor_version;
+	int major_version;
+	int minor_version;
+	req = strdup(request_line);
+	if((method = strtok (req," ")) == NULL) return 0;
+	if((uri = strtok (NULL, " ")) == NULL) return 0;
+	if((prot = strtok (NULL, "/")) == NULL) return 0;
+	if((smajor_version = strtok (NULL, ".")) == NULL) return 0;
+	if((sminor_version = strtok (NULL, "\r\n")) == NULL) return 0;
+	//printf("METHOD:[%s], URI:[%s], PROT:[%s], PROTMAJORVERSION:[%s], PROMINORVERSION:[%s]\n", method, uri, prot, smajor_version, sminor_version); 
+	if(strcmp(method,"GET") == 0)
+		request->method = HTTP_GET;
+	else
+		request->method = HTTP_UNSUPPORTED;
+	request->major_version = strtol(smajor_version, &convert_int_error, 10);
+	if(*convert_int_error)
+		request->major_version = -1;
+	request->minor_version = strtol(sminor_version, &convert_int_error, 10);
+	if(*convert_int_error)
+		request->minor_version = -1;
+	request->url = uri;
+	return 1;
+}
+
+char *rewrite_url(char *url) {
+	char *dupurl;
+	char *rewrited_url;
+	dupurl = strdup(url);
+	if((rewrited_url = strtok(dupurl, "?")) == NULL)
+		return url;
+	else
+		return rewrited_url;
+}
+
+int check_and_open(const char *url, const char *document_root) {
+	char filename[256];
+	struct stat s;
+	int fd;
+	sprintf(filename, "%s%s", document_root, url);
+	if(stat(filename, &s) == 0) {
+		if(s.st_mode & S_IFREG) {
+			if((fd = open(filename, O_RDONLY)) != -1)
+				return fd;
+			else
+				return -1; 	
+		}
+		else
+			return -1;
+	}
+	else
+		return -1;
+}
+
+int get_file_size(int fd) {
+	struct stat s;
+	fstat(fd, &s);
+	return s.st_size;
+}
+
+int copy(int in, int out) {
 	
-	strcat(response, "\r\n");
-
-	printf("%s",response);
-
-	fprintf(fp, response);
 }
 
 void traitement_signal(int sig) {
-	printf("FERMETURE CONNEXION\n");
+	printf("-----------------------------------------------\n");
 	waitpid(-1, &sig, WNOHANG);
 }
 
