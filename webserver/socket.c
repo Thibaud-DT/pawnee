@@ -82,7 +82,7 @@ int creer_serveur(int port, char *document_root) {
 				char headers[1024];
 				send_status(fp, 200, "OK");
 				sprintf(headers, "Content-Length: %d\r\n\r\n", get_file_size(fd));
-				fprintf(fp, headers);
+				fprintf(fp, headers); 
 				fflush(fp);
 				copy(fd, socket_client);
 
