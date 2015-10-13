@@ -80,15 +80,14 @@ int creer_serveur(int port, char *document_root) {
 				send_response(fp, 505, "HTTP Version Not Supported", "<h1>505: HTTP Version Not Supported</h1>");
 			else if((fd = check_and_open(request->url, document_root)) != -1) {
 				char headers[1024];
-				int fsize = get_file_size(fd);
-				char buffer[fsize];
 				send_status(fp, 200, "OK");
-				sprintf(headers, "Content-Length: %d\r\nContent-Type: text/html\r\n\r\n", fsize);
+				sprintf(headers, "Content-Length: %d\r\n\r\n", get_file_size(fd));
 				fprintf(fp, headers);
-				read(fd, buffer, fsize);
+				fflush(fp);
+				copy(fd, socket_client);
+
+				fprintf(fp, "\r\n");
 				close(fd);
-				fprintf(fp, buffer);
-				fprintf(fp, "\r\n"); 		
 			}
 			else
 				send_response(fp, 404, "Not Found", "<h1>404: Not Found</h1>");
@@ -203,8 +202,12 @@ int get_file_size(int fd) {
 	return s.st_size;
 }
 
-int copy(int in, int out) {
-	
+int copy(int in, int out){
+	int fsize = get_file_size(in);
+	char buffer[fsize];
+	printf("Copying %d bytes...\n", fsize);
+	read(in, buffer, fsize);
+	write(out, buffer, fsize);
 }
 
 void traitement_signal(int sig) {
