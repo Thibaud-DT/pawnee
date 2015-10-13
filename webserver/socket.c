@@ -67,7 +67,7 @@ int creer_serveur(int port) {
 				if(strcmp(method,"GET") == 0 && (strncmp(version,"HTTP/1.0",8) == 0 || strncmp(version,"HTTP/1.1",8) == 0)){
 					printf("METHOD :[%s]/ URI :[%s]/ VERSION :[%s]", method,uri,version);
 					while(fgets(req, sizeof(req), fp) != NULL && req[0] != '\n' && req[0] != '\r');
-
+					
 					if(strcmp(uri, "/") == 0 || strcmp(uri, "") == 0)
 						response_200(fp);			
 					else
