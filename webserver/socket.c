@@ -170,18 +170,24 @@ int parse_http_request(const char *request_line, http_request *request) {
 char *rewrite_url(char *url) {
 	char *dupurl;
 	char *rewrited_url;
+
 	dupurl = strdup(url);
-	if((rewrited_url = strtok(dupurl, "?")) == NULL)
-		return url;
-	else
-		return rewrited_url;
+	rewrited_url = strtok(dupurl, "?");
+	if(rewrited_url[strlen(rewrited_url)-1] == '/'){
+	  sprintf(rewrited_url, "%s%s", rewrited_url, "index.html");
+	}
+	
+        return rewrited_url;
 }
 
-int check_and_open(const char *url, const char *document_root) {
+int check_and_open(char *url, char *document_root) {
 	char filename[256];
 	struct stat s;
 	int fd;
-	sprintf(filename, "%s%s", document_root, url);
+	sprintf(filename, "%s%s", document_root, rewrite_url(url));
+
+	printf("%s\n",filename);
+	
 	if(stat(filename, &s) == 0) {
 		if(s.st_mode & S_IFREG) {
 			if((fd = open(filename, O_RDONLY)) != -1)
