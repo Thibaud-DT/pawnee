@@ -67,7 +67,6 @@ int creer_serveur(int port, char *document_root) {
 			int fd;
 			http_request *request = (http_request *)malloc(sizeof(http_request));
 			fp = fdopen(socket_client, "w+");
-<<<<<<< HEAD
 			if(fgets(req, sizeof(req), fp) != NULL){
 				method = strtok (req," ");
 				uri = strtok (NULL, " ");
@@ -83,29 +82,6 @@ int creer_serveur(int port, char *document_root) {
 				}
 				else
 					response_400(fp);
-=======
-			fgets_or_exit(req, sizeof(req), fp);
-			printf("Parsing request...\n");
-			parse = parse_http_request(req, request);
-			printf("METHOD :[%d], URI :[%s], VERSION :[%d.%d]\n", request->method, request->url, request->major_version, request->minor_version);
-			skip_headers(fp);
-			if(!parse)
-				send_response(fp, 400, "Bad Request", "<h1>400: Bad Request</h1>");
-			else if(request->method == HTTP_UNSUPPORTED)
-				send_response(fp, 405, "Method Not Allowed", "<h1>405: Method Not Allowed</h1>");
-			else if(request->major_version != 1 && (request->minor_version < 0 || request->minor_version > 1))
-				send_response(fp, 505, "HTTP Version Not Supported", "<h1>505: HTTP Version Not Supported</h1>");
-			else if((fd = check_and_open(request->url, document_root)) != -1) {
-				char headers[1024];
-				send_status(fp, 200, "OK");
-				sprintf(headers, "Content-Length: %d\r\n\r\n", get_file_size(fd));
-				fprintf(fp, headers);
-				fflush(fp);
-				copy(fd, socket_client);
-
-				fprintf(fp, "\r\n");
-				close(fd);
->>>>>>> b4e02bc1be32572d44ccc411f90297eb01acbd99
 			}
 			else
 				send_response(fp, 404, "Not Found", "<h1>404: Not Found</h1>");
