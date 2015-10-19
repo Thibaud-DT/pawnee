@@ -20,7 +20,7 @@ void skip_headers(FILE *stream);
 void send_status(FILE *client, int code, const char *reason_phrase);
 void send_response(FILE *client, int code, const char *reason_phrase, const char *message_body);
 char *rewrite_url(char *url);
-int check_and_open(const char *url, const char *document_root);
+int check_and_open(char *url, char *document_root);
 int get_file_size(int fd);
 int copy(int in, int out);
 char *get_filename_ext(const char *filename);

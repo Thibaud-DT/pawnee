@@ -74,21 +74,20 @@ int creer_serveur(int port, char *document_root) {
 			else if(request->major_version != 1 && (request->minor_version < 0 || request->minor_version > 1))
 				send_response(fp, 505, "HTTP Version Not Supported", "<h1>505: HTTP Version Not Supported</h1>");
 			else if((fd = check_and_open(request->url, document_root)) != -1) {
-				char headers[1024];
+				char headers[1024];				
 				char mime_type[64];
-				int fsize = get_file_size(fd);
-				char buffer[fsize];
 				get_mime_type(rewrite_url(request->url), mime_type);
 				send_status(fp, 200, "OK");
 				if(mime_type != NULL)
-					sprintf(headers, "Content-Length: %d\r\nContent-Type: text/html\r\n\r\n", fsize);
+					sprintf(headers, "Content-Length: %d\r\nContent-Type: %s\r\n\r\n", get_file_size(fd), mime_type);
 				else
-					sprintf(headers, "Content-Length: %d\r\nContent-Type: text/plain\r\n\r\n", fsize);
-				fprintf(fp, headers);
-				read(fd, buffer, fsize);
+					sprintf(headers, "Content-Length: %d\r\nContent-Type: text/plain\r\n\r\n", get_file_size(fd));
+				fprintf(fp, headers); 
+				fflush(fp);
+				copy(fd, socket_client);
+
+				fprintf(fp, "\r\n");
 				close(fd);
-				fprintf(fp, buffer);
-				fprintf(fp, "\r\n"); 		
 			}
 			else
 				send_response(fp, 404, "Not Found", "<h1>404: Not Found</h1>");
@@ -193,18 +192,24 @@ int parse_http_request(const char *request_line, http_request *request) {
 char *rewrite_url(char *url) {
 	char *dupurl;
 	char *rewrited_url;
+
 	dupurl = strdup(url);
-	if((rewrited_url = strtok(dupurl, "?")) == NULL)
-		return url;
-	else
-		return rewrited_url;
+	rewrited_url = strtok(dupurl, "?");
+	if(rewrited_url[strlen(rewrited_url)-1] == '/'){
+	  sprintf(rewrited_url, "%s%s", rewrited_url, "index.html");
+	}
+	
+        return rewrited_url;
 }
 
-int check_and_open(const char *url, const char *document_root) {
+int check_and_open(char *url, char *document_root) {
 	char filename[256];
 	struct stat s;
 	int fd;
-	sprintf(filename, "%s%s", document_root, url);
+	sprintf(filename, "%s%s", document_root, rewrite_url(url));
+
+	printf("%s\n",filename);
+	
 	if(stat(filename, &s) == 0) {
 		if(s.st_mode & S_IFREG) {
 			if((fd = open(filename, O_RDONLY)) != -1)
@@ -225,8 +230,12 @@ int get_file_size(int fd) {
 	return s.st_size;
 }
 
-int copy(int in, int out) {
-	
+int copy(int in, int out){
+	int fsize = get_file_size(in);
+	char buffer[fsize];
+	printf("Copying %d bytes...\n", fsize);
+	read(in, buffer, fsize);
+	write(out, buffer, fsize);
 }
 
 void traitement_signal(int sig) {
