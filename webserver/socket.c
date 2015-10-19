@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "socket.h"
+#include "stats.h"
 
 #define BUFFER_SIZE 4096
 
@@ -26,6 +27,7 @@ int creer_serveur(int port, char *document_root) {
 	pid_t pid;
 	socket_serveur = socket(AF_INET, SOCK_STREAM, 0);
 	initialiser_signaux();
+	init_stats();
 	if(socket_serveur == -1) {
 		perror("SOCKET SERVEUR");
 		return -1;
@@ -52,6 +54,7 @@ int creer_serveur(int port, char *document_root) {
 	printf("SERVER CREATED ON PORT %d\n[%s]\n", port, document_root);
 
 	while((socket_client = accept(socket_serveur, NULL, NULL))) {
+		stats_new_connection();
 		if(socket_client == -1)
 			perror("ACCEPT SOCKET SERVEUR");
 		printf("-----------------------------------------------\n");
@@ -69,15 +72,26 @@ int creer_serveur(int port, char *document_root) {
 			parse = parse_http_request(req, request);
 			printf("METHOD :[%d], URI :[%s], VERSION :[%d.%d]\n", request->method, request->url, request->major_version, request->minor_version);
 			skip_headers(fp);
-			if(!parse)
+			if(!parse) {
+				stats_ko_400();
 				send_response(fp, 400, "Bad Request", "<h1>400: Bad Request</h1>");
-			else if(request->method == HTTP_UNSUPPORTED)
+			}
+			else if(request->method == HTTP_UNSUPPORTED) {
+				stats_new_request();
 				send_response(fp, 405, "Method Not Allowed", "<h1>405: Method Not Allowed</h1>");
-			else if(request->major_version != 1 && (request->minor_version < 0 || request->minor_version > 1))
+			}
+			else if(request->major_version != 1 && (request->minor_version < 0 || request->minor_version > 1)) {
+				stats_new_request();
 				send_response(fp, 505, "HTTP Version Not Supported", "<h1>505: HTTP Version Not Supported</h1>");
-			else if(strcmp(rewrite_url(request->url), "/stats") == 0)
+			}
+			else if(strcmp(rewrite_url(request->url), "/stats") == 0) {
+				stats_new_request();
+				stats_ok_200();
 				send_stats(fp);
+			}
 			else if((fd = check_and_open(request->url, document_root)) != -1) {
+				stats_new_request();
+				stats_ok_200();
 				char headers[1024];				
 				char mime_type[64];
 				send_status(fp, 200, "OK");
@@ -92,8 +106,11 @@ int creer_serveur(int port, char *document_root) {
 				fprintf(fp, "\r\n");
 				close(fd);
 			}
-			else
+			else {
+				stats_new_request();
+				stats_ko_404();
 				send_response(fp, 404, "Not Found", "<h1>404: Not Found</h1>");
+			}
 			return fclose(fp);
 		}else if(pid == -1){
 			perror("ERROR FORKING");
@@ -141,8 +158,10 @@ void send_response(FILE *client, int code, const char *reason_phrase, const char
 
 void send_stats(FILE *client) {
 	char headers[256];
-	char *mstats = "This is the stats page";
+	char mstats[256];
+	web_stats *stats = get_stats();
 	send_status(client, 200, "OK");
+	sprintf(mstats, "Connexion : %d\nRequetes : %d\nRequetes abouties : %d\nRequetes malformees : %d\nTentatives acces ressources interdites : %d\nTentatives acces ressources introuvable : %d", stats->served_connections, stats->served_requests, stats->ok_200, stats->ko_400, stats->ko_403, stats->ko_404);
 	sprintf(headers, "Content-Length: %d\r\nContent-Type: text/plain\r\n\r\n", strlen(mstats));
 	fprintf(client, headers);
 	fprintf(client, mstats);
