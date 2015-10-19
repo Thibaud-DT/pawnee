@@ -161,7 +161,7 @@ void send_stats(FILE *client) {
 	char mstats[256];
 	web_stats *stats = get_stats();
 	send_status(client, 200, "OK");
-	sprintf(mstats, "Connexion : %d\nRequetes : %d\nRequetes abouties : %d\nRequetes malformees : %d\nTentatives acces ressources interdites : %d\nTentatives acces ressources introuvable : %d", stats->served_connections, stats->served_requests, stats->ok_200, stats->ko_400, stats->ko_403, stats->ko_404);
+	sprintf(mstats, "Connexions : %d\nRequetes : %d\nRequetes abouties : %d\nRequetes malformees : %d\nTentatives acces ressources interdites : %d\nTentatives acces ressources introuvable : %d", stats->served_connections, stats->served_requests, stats->ok_200, stats->ko_400, stats->ko_403, stats->ko_404);
 	sprintf(headers, "Content-Length: %d\r\nContent-Type: text/plain\r\n\r\n", strlen(mstats));
 	fprintf(client, headers);
 	fprintf(client, mstats);
