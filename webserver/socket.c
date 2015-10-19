@@ -15,11 +15,6 @@
 
 #define BUFFER_SIZE 4096
 
-
-#define E_400 "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 17\r\n\r\n400 Bad Request\r\n"
-#define E_404 "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 13\r\n\r\n404 Not Found\r\n"
-#define OK "HTTP/1.1 200 OK"
-
 int socket_serveur;
 int socket_client;
 const char *message_bienvenue = "<html><head><title>Hello</title><body><h1>Bonjour, bienvenue sur mon serveur</h1></body></html>";
@@ -80,10 +75,15 @@ int creer_serveur(int port, char *document_root) {
 				send_response(fp, 505, "HTTP Version Not Supported", "<h1>505: HTTP Version Not Supported</h1>");
 			else if((fd = check_and_open(request->url, document_root)) != -1) {
 				char headers[1024];
+				char mime_type[64];
 				int fsize = get_file_size(fd);
 				char buffer[fsize];
+				get_mime_type(rewrite_url(request->url), mime_type);
 				send_status(fp, 200, "OK");
-				sprintf(headers, "Content-Length: %d\r\nContent-Type: text/html\r\n\r\n", fsize);
+				if(mime_type != NULL)
+					sprintf(headers, "Content-Length: %d\r\nContent-Type: text/html\r\n\r\n", fsize);
+				else
+					sprintf(headers, "Content-Length: %d\r\nContent-Type: text/plain\r\n\r\n", fsize);
 				fprintf(fp, headers);
 				read(fd, buffer, fsize);
 				close(fd);
@@ -137,6 +137,29 @@ void send_response(FILE *client, int code, const char *reason_phrase, const char
 	fprintf(client, "\r\n");
 }
 
+int get_mime_type(char *file, char *mime_type) {
+	char *fextension;
+	char fnull[256];
+	char buff[256];
+	FILE *fmime = fopen("/etc/mime.types", "r");
+	fextension = get_filename_ext(file);
+	printf("%s\n", fextension);
+	while(fgets(buff, sizeof(buff), fmime) != NULL) {
+		char extension[32];
+		sscanf(buff, "%s\t\t\t\t%s\n", mime_type, extension);
+		if(strcmp(fextension, extension) == 0)
+			return 0;
+		//printf("%s -> %s\n", mime_type, extension); 
+	}
+	return 1;
+}
+
+char *get_filename_ext(const char *filename) {
+    char *dot = strrchr(filename, '.');
+    if(!dot || dot == filename) return "";
+    return dot + 1;
+}
+
 int parse_http_request(const char *request_line, http_request *request) {
 	char *req;
 	char *method;
@@ -153,7 +176,6 @@ int parse_http_request(const char *request_line, http_request *request) {
 	if((prot = strtok (NULL, "/")) == NULL) return 0;
 	if((smajor_version = strtok (NULL, ".")) == NULL) return 0;
 	if((sminor_version = strtok (NULL, "\r\n")) == NULL) return 0;
-	//printf("METHOD:[%s], URI:[%s], PROT:[%s], PROTMAJORVERSION:[%s], PROMINORVERSION:[%s]\n", method, uri, prot, smajor_version, sminor_version); 
 	if(strcmp(method,"GET") == 0)
 		request->method = HTTP_GET;
 	else

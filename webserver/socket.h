@@ -23,4 +23,6 @@ char *rewrite_url(char *url);
 int check_and_open(const char *url, const char *document_root);
 int get_file_size(int fd);
 int copy(int in, int out);
+char *get_filename_ext(const char *filename);
+int get_mime_type(char *file, char *mime_type);
 #endif
