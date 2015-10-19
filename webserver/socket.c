@@ -76,9 +76,8 @@ int creer_serveur(int port, char *document_root) {
 			else if((fd = check_and_open(request->url, document_root)) != -1) {
 				char headers[1024];				
 				char mime_type[64];
-				get_mime_type(rewrite_url(request->url), mime_type);
 				send_status(fp, 200, "OK");
-				if(mime_type != NULL)
+				if(get_mime_type(rewrite_url(request->url), mime_type))
 					sprintf(headers, "Content-Length: %d\r\nContent-Type: %s\r\n\r\n", get_file_size(fd), mime_type);
 				else
 					sprintf(headers, "Content-Length: %d\r\nContent-Type: text/plain\r\n\r\n", get_file_size(fd));
@@ -140,17 +139,16 @@ int get_mime_type(char *file, char *mime_type) {
 	char *fextension;
 	char fnull[256];
 	char buff[256];
-	FILE *fmime = fopen("/etc/mime.types", "r");
+	FILE *fmime = fopen("mime.types", "r");
 	fextension = get_filename_ext(file);
 	printf("%s\n", fextension);
 	while(fgets(buff, sizeof(buff), fmime) != NULL) {
 		char extension[32];
 		sscanf(buff, "%s\t\t\t\t%s\n", mime_type, extension);
 		if(strcmp(fextension, extension) == 0)
-			return 0;
-		//printf("%s -> %s\n", mime_type, extension); 
+			return 1;
 	}
-	return 1;
+	return 0;
 }
 
 char *get_filename_ext(const char *filename) {
