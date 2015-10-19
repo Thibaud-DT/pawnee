@@ -19,6 +19,7 @@ int socket_serveur;
 int socket_client;
 const char *message_bienvenue = "<html><head><title>Hello</title><body><h1>Bonjour, bienvenue sur mon serveur</h1></body></html>";
 int optval = 1;
+int nbreq = 0;
 
 int creer_serveur(int port, char *document_root) {
 	struct sockaddr_in saddr;
@@ -60,6 +61,7 @@ int creer_serveur(int port, char *document_root) {
 			char req[BUFFER_SIZE];
 			int parse;
 			int fd;
+			nbreq++;
 			http_request *request = (http_request *)malloc(sizeof(http_request));
 			fp = fdopen(socket_client, "w+");
 			fgets_or_exit(req, sizeof(req), fp);
@@ -73,6 +75,8 @@ int creer_serveur(int port, char *document_root) {
 				send_response(fp, 405, "Method Not Allowed", "<h1>405: Method Not Allowed</h1>");
 			else if(request->major_version != 1 && (request->minor_version < 0 || request->minor_version > 1))
 				send_response(fp, 505, "HTTP Version Not Supported", "<h1>505: HTTP Version Not Supported</h1>");
+			else if(strcmp(rewrite_url(request->url), "/stats") == 0)
+				send_stats(fp);
 			else if((fd = check_and_open(request->url, document_root)) != -1) {
 				char headers[1024];				
 				char mime_type[64];
@@ -133,6 +137,16 @@ void send_response(FILE *client, int code, const char *reason_phrase, const char
 		fprintf(client, message_body);
 	}
 	fprintf(client, "\r\n");
+}
+
+void send_stats(FILE *client) {
+	char headers[256];
+	char *mstats = "This is the stats page";
+	send_status(client, 200, "OK");
+	sprintf(headers, "Content-Length: %d\r\nContent-Type: text/plain\r\n\r\n", strlen(mstats));
+	fprintf(client, headers);
+	fprintf(client, mstats);
+	fprintf(client, "\r\n");	
 }
 
 int get_mime_type(char *file, char *mime_type) {
