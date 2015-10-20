@@ -1,7 +1,7 @@
 CC=gcc
 LD=gcc
 CFLAGS=-Wall -W -Werror
-LDFLAGS=
+LDFLAGS=-pthread
 
 EXE=webever
 
