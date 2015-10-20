@@ -10,7 +10,7 @@ static sem_t *sem;
 int init_stats(void) {
 	sem = mmap(NULL, sizeof(sem_t), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 	sem_init(sem, 0, 1);
-	site_stats = mmap(NULL, sizeof *site_stats, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	site_stats = mmap(NULL, sizeof(web_stats), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	site_stats->served_connections = 0;
 	site_stats->served_requests = 0;
 	site_stats->ok_200 = 0;
@@ -22,7 +22,7 @@ int init_stats(void) {
 web_stats *get_stats(void) {
 	sem_wait(sem);
 	web_stats *stats = (web_stats *)malloc(sizeof(web_stats));
-	memcpy(stats, site_stats, sizeof(site_stats));
+	memcpy(stats, site_stats, sizeof(web_stats));
 	sem_post(sem);
 	return stats;
 }
